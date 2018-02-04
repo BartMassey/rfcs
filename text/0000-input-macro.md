@@ -1,4 +1,4 @@
-- Feature Name: Input Macro
+- Feature Name: Input and Prompting Macros
 - Start Date: 2017-12-05
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -6,8 +6,10 @@
 # Summary
 [summary]: #summary
 
-Standard macros gets an `input!()` macro for reading a line
-from standard input with optional prompt.
+Standard macros gets a macro for reading a line from
+standard input with optional prompt; also macros and
+functions for flushing non-terminated lines to standard
+output and standard error.
 
 # Motivation
 [motivation]: #motivation
@@ -35,6 +37,62 @@ will meet most of the needs.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
+
+The package `std::io::prompted` is part of the default Rust
+environment. The package provides three macros for
+interacting with the user at the command line: `input!()`,
+`prompt!()` and `eprompt!()`. The package also
+provides three convenience functions for user interaction:
+`flush()`, `eflush()` and `read_line()`.
+
+The `input!()` macro accepts optional `format!` arguments
+describing a prompt to be printed. If given, the prompt is
+printed to `stdout()`: it is not newline terminated
+unless the format string requests it. `stdout()` is then
+flushed to make the prompt visible using `flush()`,
+and a line of user input is read from `stdin()` using
+`read_line()`. This line has its line terminator removed
+and is then returned to the caller as a `String`.
+
+An example of the use of `input!()` is inspired by the
+Guessing Game example from the Rust book.
+
+    let guess = input!("Please input your guess (1-{}): ", n);
+    let guess: u32 = match guess.trim().parse() {
+        ...
+
+This code behaves as expected. The first line prompts the
+user and gets a `String` representing the user's guess. The
+second line turns the guess string into a number and then
+proceeds based on the success or failure of this conversion.
+
+The `prompt!()` macro takes a `format!` argument and
+displays it to the user on standard output. It then flushes
+standard output to guarantee visibility.
+
+`prompt!()` can be used to display a prompt in cases where
+more complicated user input processing is to be done by the
+program. Another example of the use of `prompt!()` shows the
+standard practice of overwriting the output line using a
+carriage return to display the status of ongoing
+long-running operations:
+
+    let phases = &[
+        (1, "pre", &f_pre as &'static Fn ()),
+        (2, "op", &f_op),
+        (3, "post", &f_post)];
+    let mut last_len = 0;
+    for &(n, name, f) in phases {
+        for _ in 0..last_len {
+            print!(" ")
+        }
+        let message = format!("{}: {}", n, name);
+        prompt!("\r{}", message);
+        f();
+        last_len = message.len();
+        print!("\r")
+    }
+    println!()
 
 Explain the proposal as if it was already included in the language and you were teaching it to another Rust programmer. That generally means:
 
